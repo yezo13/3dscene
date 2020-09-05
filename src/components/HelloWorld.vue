@@ -20,9 +20,11 @@ export default {
       scene: null, //场景
       step: 0, //速度
       step1: 0, //cube速度
-      stats: null,
-      control: null,
-      goahead: true //是否向前
+      stats: null, //性能检测
+      control: null, //控制器
+      goahead: true, //是否向前
+      crash: false, //是否碰撞
+      collideMeshList: []
     }
   },
   created() {
@@ -76,10 +78,37 @@ export default {
 
       if (this.goahead) this.step += 0.05
       else this.step -= 0.05
+      if (this.crash == false) {
+        //this.cube.position.z = this.step
+        if (this.car != null) this.car.position.z = this.step
+      } else {
+        console.log("boom!")
+        console.log(this.car.position)
+        console.log(this.cube.position)
+      }
+      if (this.car != null) {
+        var originPoint = this.car.position.clone(); //设置检测哪个元素是否碰撞
+        for (var vertexIndex = 0; vertexIndex < this.cube.geometry.vertices.length; vertexIndex++) {
+          // 顶点原始坐标
+          var localVertex = this.cube.geometry.vertices[vertexIndex].clone();
+          // 顶点经过变换后的坐标
+          var globalVertex = localVertex.applyMatrix4(this.cube.matrix);
+          // 获得由中心指向顶点的向量
+          var directionVector = globalVertex.sub(this.cube.position);
 
-      this.cube.position.z = this.step
-      if (this.car != null) this.car.position.z = this.step
-
+          // 将方向向量初始化
+          var ray = new THREE.Raycaster(originPoint, directionVector.clone().normalize());
+          // 检测射线与多个物体的相交情况
+          var collisionResults = ray.intersectObjects(this.collideMeshList, true); //collideMeshList存储的是boxHelper
+          // 如果返回结果不为空，且交点与射线起点的距离小于物体中心至顶点的距离，则发生了碰撞
+          if (collisionResults.length > 0 && collisionResults[0].distance < directionVector.length()) {
+            this.crash = true; // crash 是一个标记变量
+          } else {
+            this.crash = false;
+          }
+          //console.log(this.crash)
+        }
+      }
     },
     //刷新函数
     animate() {
@@ -107,7 +136,6 @@ export default {
       this.renderer.render(this.scene, this.camera);
       var lastnow = new Date().getTime()
       this.move(15, lastnow)
-
     },
 
     init() {
@@ -163,13 +191,13 @@ export default {
       this.cube = new THREE.Mesh(cubeGeometry, cubeMaterial);
 
       //设置cube的位置 
-      this.cube.position.x = -3;
-      this.cube.position.y = 0.5;
+      this.cube.position.x = 10;
+      this.cube.position.y = 0;
       this.cube.position.z = 1;
       this.cube.castShadow = true;
 
       //cube添加到场景中
-      this.scene.add(this.cube);
+      //this.scene.add(this.cube);
 
 
       //创建性能检测
@@ -187,6 +215,12 @@ export default {
 
       this.importObj(this.scene, this.camera, this.renderer, this.stats, this.control)
       this.importGLTF(this.scene, this.camera, this.renderer, this.stats, this.control)
+
+
+
+      //var box2 = new THREE.BoxHelper(this.cube);
+
+      // this.collideMeshList.push(box2)
 
       console.log(this.scene.children.length)
       console.log(this.scene.children[0])
@@ -244,11 +278,13 @@ export default {
           mesh1.scale.set(0.0005, 0.0005, 0.0005)
           mesh1.position.x = 0
           mesh1.position.y = 0
-          mesh1.position.z = 1
+          mesh1.position.z = -1
           //mesh.scale.multiplyScalar(25);
           //setScaleToFitSize(group)
           _this.car = mesh1
           scene.add(mesh1);
+          var box1 = new THREE.BoxHelper(this.car); //将car1插入collidemeshlist
+          this.collideMeshList.push(box1)
         }, xhr => {
           // called while loading is progressing
           console.log(`${( xhr.loaded / xhr.total * 100 )}% loaded`);
@@ -285,7 +321,7 @@ export default {
             child.material.emissiveMap = child.material.map
           }
         })
-
+        console.log(gltf.scene)
         scene.add(gltf.scene)
       }, xhr => {
         // called while loading is progressing
