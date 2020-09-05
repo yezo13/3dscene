@@ -81,6 +81,7 @@ export default {
       if (this.crash == false) {
         //this.cube.position.z = this.step
         if (this.car != null) this.car.position.z = this.step
+
       } else {
         console.log("boom!")
         console.log(this.car.position)
