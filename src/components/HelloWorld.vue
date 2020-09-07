@@ -24,7 +24,8 @@ export default {
       control: null, //控制器
       goahead: true, //是否向前
       crash: false, //是否碰撞
-      collideMeshList: []
+      collideMeshList: [], //mesh物体碰撞检测列表
+      allBuliding: []
     }
   },
   created() {
@@ -85,7 +86,7 @@ export default {
       } else {
         console.log("boom!")
         console.log(this.car.position)
-        console.log(this.cube.position)
+        //console.log(this.cube.position)
       }
       if (this.car != null) {
         var originPoint = this.car.position.clone(); //设置检测哪个元素是否碰撞
@@ -100,14 +101,15 @@ export default {
           // 将方向向量初始化
           var ray = new THREE.Raycaster(originPoint, directionVector.clone().normalize());
           // 检测射线与多个物体的相交情况
-          var collisionResults = ray.intersectObjects(this.collideMeshList, true); //collideMeshList存储的是boxHelper
+          var collisionResults = ray.intersectObjects(this.allBuliding, true); //collideMeshList存储的是boxHelper
+          //console.log(collisionResults)
           // 如果返回结果不为空，且交点与射线起点的距离小于物体中心至顶点的距离，则发生了碰撞
           if (collisionResults.length > 0 && collisionResults[0].distance < directionVector.length()) {
             this.crash = true; // crash 是一个标记变量
           } else {
             this.crash = false;
           }
-          //console.log(this.crash)
+          console.log(this.crash)
         }
       }
     },
@@ -271,10 +273,11 @@ export default {
           let carGeometry = new THREE.Geometry();
           for (let i = 0; i < group.children.length; i++) {
             let item = new THREE.Geometry().fromBufferGeometry(group.children[i].geometry)
+            //console.log(item)
             carGeometry.merge(item, group.children[i].matrix);
           }
 
-          var carMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+          var carMaterial = new THREE.MeshBasicMaterial({ color: 0x770077 });
           var mesh1 = new THREE.Mesh(carGeometry, carMaterial);
           mesh1.scale.set(0.0005, 0.0005, 0.0005)
           mesh1.position.x = 0
@@ -322,8 +325,38 @@ export default {
             child.material.emissiveMap = child.material.map
           }
         })
-        console.log(gltf.scene)
-        scene.add(gltf.scene)
+        console.log("This is the scene:")
+        console.log(gltf.scene) // is a group
+        //make the group in a mesh list
+        let carGeometry = new THREE.Geometry();
+        //children 5是cube（mesh） 6是group（building），7是water（mesh）
+        //cube就是最中心的一个小块
+        let itemGeometry = new THREE.Geometry().fromBufferGeometry(gltf.scene.children[5].geometry)
+        let itemMaterial = new THREE.MeshBasicMaterial({ color: 0xcc6600 }) //white
+        var tempMesh = new THREE.Mesh(itemGeometry, itemMaterial)
+        tempMesh.scale.set(.1, .1, .1)
+        this.allBuliding.push(tempMesh)
+        scene.add(tempMesh)
+
+        itemGeometry = new THREE.Geometry().fromBufferGeometry(gltf.scene.children[7].geometry)
+        itemMaterial = new THREE.MeshBasicMaterial({ color: 0x0000ff }) //white
+        tempMesh = new THREE.Mesh(itemGeometry, itemMaterial)
+        tempMesh.scale.set(.1, .1, .1)
+        this.allBuliding.push(tempMesh)
+        scene.add(tempMesh)
+
+        for (let i = 0; i < gltf.scene.children[6].children.length; i++) {
+          console.log(gltf.scene.children[i])
+          itemGeometry = new THREE.Geometry().fromBufferGeometry(gltf.scene.children[6].children[i].geometry)
+          itemMaterial = new THREE.MeshBasicMaterial({ color: 0xbb5500 }) //white
+          tempMesh = new THREE.Mesh(itemGeometry, itemMaterial)
+          tempMesh.scale.set(.1, .1, .1)
+          this.allBuliding.push(tempMesh)
+          scene.add(tempMesh)
+        }
+
+
+        //scene.add(gltf.scene)
       }, xhr => {
         // called while loading is progressing
         console.log(`${( xhr.loaded / xhr.total * 100 )}% loaded`);
@@ -331,7 +364,7 @@ export default {
         // called when loading has errors
         console.error('An error happened', error);
       })
-
+      console.log(this.allBuliding)
       this.animate()
     },
     //导入JSON格式模型
